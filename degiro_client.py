@@ -51,23 +51,24 @@ def fetch_portfolio() -> dict:
         trading_api.logout()
         raise RuntimeError("DeGiro get_update returned no data")
 
-    # Parse total portfolio summary (same nested name/value array format as positions)
-    raw_tp = update.get("totalPortfolio", {})
-    logger.info("Raw totalPortfolio: %s", raw_tp)
+    # Parse total portfolio summary (nested name/value array format)
     total_portfolio_values = {}
-    for entry in raw_tp.get("value", []):
+    for entry in update.get("totalPortfolio", {}).get("value", []):
         name = entry.get("name")
         if name:
             total_portfolio_values[name] = entry.get("value")
-    logger.info("Parsed totalPortfolio values: %s", total_portfolio_values)
+
+    # freeSpaceNew is a dict like {"EUR": 1.35, "USD": 0} — extract EUR value
+    free_space = total_portfolio_values.get("freeSpaceNew")
+    if isinstance(free_space, dict):
+        free_space = free_space.get("EUR")
 
     summary = {
-        "totalPortfolio": _to_float(total_portfolio_values.get("portVal")),
         "totalCash": _to_float(total_portfolio_values.get("totalCash")),
         "totalDepositWithdrawal": _to_float(
             total_portfolio_values.get("totalDepositWithdrawal")
         ),
-        "freeSpaceNew": _to_float(total_portfolio_values.get("freeSpaceNew")),
+        "freeSpaceNew": _to_float(free_space),
     }
 
     # Parse individual positions
@@ -80,6 +81,12 @@ def fetch_portfolio() -> dict:
         if pos and pos.get("size", 0) != 0:
             positions.append(pos)
             product_ids.append(pos["id"])
+
+    # Compute total portfolio value from position values + cash
+    position_total = sum(p.get("value") or 0 for p in positions)
+    summary["totalPortfolio"] = round(
+        position_total + (summary["totalCash"] or 0), 2
+    )
 
     # Enrich positions with product names and ISINs
     if product_ids:
