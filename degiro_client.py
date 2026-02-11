@@ -52,11 +52,14 @@ def fetch_portfolio() -> dict:
         raise RuntimeError("DeGiro get_update returned no data")
 
     # Parse total portfolio summary (same nested name/value array format as positions)
+    raw_tp = update.get("totalPortfolio", {})
+    logger.info("Raw totalPortfolio: %s", raw_tp)
     total_portfolio_values = {}
-    for entry in update.get("totalPortfolio", {}).get("value", []):
+    for entry in raw_tp.get("value", []):
         name = entry.get("name")
         if name:
             total_portfolio_values[name] = entry.get("value")
+    logger.info("Parsed totalPortfolio values: %s", total_portfolio_values)
 
     summary = {
         "totalPortfolio": _to_float(total_portfolio_values.get("portVal")),
