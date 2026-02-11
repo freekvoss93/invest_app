@@ -31,7 +31,12 @@ def fetch_portfolio() -> dict:
     credentials = _build_credentials()
     trading_api = TradingAPI(credentials=credentials)
     trading_api.connect()
-    logger.info("Connected to DeGiro")
+
+    # Fetch int_account — required for all subsequent API calls
+    client_details = trading_api.get_client_details()
+    credentials.int_account = client_details["data"]["intAccount"]
+
+    logger.info("Connected to DeGiro (account %s)", credentials.int_account)
 
     # Fetch portfolio and total portfolio summary
     update = trading_api.get_update(
@@ -41,6 +46,10 @@ def fetch_portfolio() -> dict:
         ],
         raw=True,
     )
+
+    if update is None:
+        trading_api.logout()
+        raise RuntimeError("DeGiro get_update returned no data")
 
     # Parse total portfolio summary
     total_portfolio = update.get("totalPortfolio", {})
