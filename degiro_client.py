@@ -108,11 +108,18 @@ def _parse_position(item: dict) -> dict | None:
         if name:
             values[name] = val
 
-    if not values.get("id"):
+    raw_id = values.get("id")
+    if not raw_id:
+        return None
+
+    # Skip cash positions (id is a currency code like "EUR", not numeric)
+    try:
+        pos_id = int(raw_id)
+    except (ValueError, TypeError):
         return None
 
     return {
-        "id": int(values["id"]),
+        "id": pos_id,
         "size": _to_float(values.get("size")),
         "price": _to_float(values.get("price")),
         "value": _to_float(values.get("value")),
