@@ -51,15 +51,20 @@ def fetch_portfolio() -> dict:
         trading_api.logout()
         raise RuntimeError("DeGiro get_update returned no data")
 
-    # Parse total portfolio summary
-    total_portfolio = update.get("totalPortfolio", {})
+    # Parse total portfolio summary (same nested name/value array format as positions)
+    total_portfolio_values = {}
+    for entry in update.get("totalPortfolio", {}).get("value", []):
+        name = entry.get("name")
+        if name:
+            total_portfolio_values[name] = entry.get("value")
+
     summary = {
-        "totalPortfolio": _to_float(total_portfolio.get("value")),
-        "totalCash": _to_float(total_portfolio.get("totalCash")),
+        "totalPortfolio": _to_float(total_portfolio_values.get("portVal")),
+        "totalCash": _to_float(total_portfolio_values.get("totalCash")),
         "totalDepositWithdrawal": _to_float(
-            total_portfolio.get("totalDepositWithdrawal")
+            total_portfolio_values.get("totalDepositWithdrawal")
         ),
-        "freeSpaceNew": _to_float(total_portfolio.get("freeSpaceNew")),
+        "freeSpaceNew": _to_float(total_portfolio_values.get("freeSpaceNew")),
     }
 
     # Parse individual positions
