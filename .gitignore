@@ -10,8 +10,9 @@ __pycache__/
 dist/
 build/
 
-# Database
+# Database (portfolio.db is tracked for GitHub Actions persistence)
 *.db
+!portfolio.db
 
 # IDE
 .vscode/

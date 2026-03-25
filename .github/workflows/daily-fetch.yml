@@ -1,0 +1,39 @@
+name: Daily Portfolio Fetch
+
+on:
+  schedule:
+    # 17:00 UTC = 18:00 CET (winter) / 19:00 CEST (summer), weekdays only
+    - cron: '0 17 * * 1-5'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch portfolio snapshot
+        env:
+          DEGIRO_USERNAME: ${{ secrets.DEGIRO_USERNAME }}
+          DEGIRO_PASSWORD: ${{ secrets.DEGIRO_PASSWORD }}
+          DEGIRO_TOTP_SECRET: ${{ secrets.DEGIRO_TOTP_SECRET }}
+        run: python main.py --once
+
+      - name: Commit updated database
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add portfolio.db
+          git diff --cached --quiet || git commit -m "chore: daily portfolio snapshot $(date -u +%Y-%m-%d)"
+          git push
